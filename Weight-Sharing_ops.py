@@ -126,8 +126,58 @@ class WeightSharingTransConv2d(tf.keras.layers.Conv2D):
             weight = self.kernel[:, :, self.start:self.start+self.out_channels, self.start2:self.start2+self.in_channels]            
             y.append(tf.nn.conv2d_transpose(input_l[idx], weight, output_shape, self.strides, padding='SAME')+self.bias[self.start:self.start+self.out_channels])
 
-
         return y
 
+    
+class Block(tf.keras.Model):
+    def __init__(self, inp, outp, stride):
+        super(Block, self).__init__()
+        midp = outp       
+        self.conv1 = WeightSharingConv2d(inp, midp, 1, 1, 1, bias=False)
+        self.b_n1 = SwitchableBatchNorm2d(midp)
+        self.act1_1 = tf.keras.layers.LeakyReLU(alpha=0.1)
+        self.act1_2 = tf.keras.layers.LeakyReLU(alpha=0.1)
+        self.act1_3 = tf.keras.layers.LeakyReLU(alpha=0.1)
+        self.act1_4 = tf.keras.layers.LeakyReLU(alpha=0.1)
+        self.act1_5 = tf.keras.layers.LeakyReLU(alpha=0.1)
+        
+        self.conv2 = WeightSharingConv2d(midp, midp,3, 1, 1, bias=False)
+        self.b_n2 = SwitchableBatchNorm2d(midp)
+        self.act2_1 = tf.keras.layers.LeakyReLU(alpha=0.1)
+        self.act2_2 = tf.keras.layers.LeakyReLU(alpha=0.1)
+        self.act2_3 = tf.keras.layers.LeakyReLU(alpha=0.1)
+        self.act2_4 = tf.keras.layers.LeakyReLU(alpha=0.1)
+        self.act2_5 = tf.keras.layers.LeakyReLU(alpha=0.1)
+        
+        self.conv3 = WeightSharingConv2d(midp, inp, 1, 1, 1, bias=False)
+        self.b_n3 = SwitchableBatchNorm2d(inp)
 
+    def call(self, x):
+        x1 = self.conv1(x)
+        x2 = self.b_n1(x1)
 
+        x3_1 = self.act1_1(x2[0])
+        x3_2 = self.act1_2(x2[1])
+        x3_3 = self.act1_3(x2[2])
+        x3_4 = self.act1_4(x2[3])
+        x3_5 = self.act1_5(x2[4])
+
+        x4 = self.conv2([x3_1,x3_2,x3_3,x3_4,x3_5])
+
+        x5 = self.b_n2(x4)
+
+        x6_1 = self.act2_1(x5[0])
+        x6_2 = self.act2_2(x5[1])
+        x6_3 = self.act2_3(x5[2])
+        x6_4 = self.act2_4(x5[3])
+        x6_5 = self.act2_5(x5[4])
+        
+        x7 = self.conv3([x6_1,x6_2,x6_3,x6_4,x6_5])
+        x8 = self.b_n3(x7)
+
+        x9=[]
+
+        for i in range(len(x)):
+            x9.append(x8[i]+x[i])
+
+        return x9

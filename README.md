@@ -1,4 +1,4 @@
-# A-Weight Sharing Autoencoder
+# A-Weight Sharing operations
 
 A-Weight Sharing Autoencoder which compresses the features of various dimensions.
 
